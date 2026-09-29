@@ -11,7 +11,7 @@ tables and the three identities sum_beta 1 = 2^n,
 sum_beta W_f(beta) = 2^n (-1)^{f(0)} and sum_beta W_f(beta)^2 = 2^(2n)
 requested in the same report.
 
-Repository : https://github.com/
+Repository : https://github.com/Zhl3721/hull-dimensions-boolean-functions-magma
 Environment: tested with Magma V2.28-x (replace with the exact version used)
 Contact    : (to be added)
 
