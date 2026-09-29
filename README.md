@@ -13,8 +13,8 @@ $\sum_\beta W_f(\beta)=2^n(-1)^{f(0)}$ and $\sum_\beta W_f(\beta)^2=2^{2n}$
 requested in the same report.
 
 - **Repository:** https://github.com/Zhl3721/hull-dimensions-boolean-functions-magma
-- **Environment:** tested with Magma V2.28-x *(replace with the exact version used)*
-- **Contact:** *(to be added)*
+- **Environment:** tested with Magma V2.12-16
+- **Contact:** zhu_huilian@qq.com
 
 ## Index (paper item -> program)
 
@@ -56,5 +56,5 @@ its expected output.
 
 ## License and citation
 
-- **License:** see `LICENSE` *(to be added)*.
+- **License:** MIT (see `LICENSE`).
 - If you use this package, please cite the paper above.
