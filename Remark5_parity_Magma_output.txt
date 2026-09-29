@@ -1,0 +1,27 @@
+==================================================================
+Remark 5 (Section 4): parity of wt(f) for the searched families
+  (i)  f(x) = Tr_1^n(x^d),           3 <= n <= 12, 2 <= d <= 2^n-2
+  (ii) f(x) = Tr_1^n(x^{d1}+x^{d2}), 4 <= n <= 8, 2 <= d1 < d2 <= 2^n-2
+==================================================================
+
+(i) f(x) = Tr_1^n(x^d)
+    n =  3 :     5 exponents checked, 0 odd weight(s)
+    n =  4 :    13 exponents checked, 0 odd weight(s)
+    n =  5 :    29 exponents checked, 0 odd weight(s)
+    n =  6 :    61 exponents checked, 0 odd weight(s)
+    n =  7 :   125 exponents checked, 0 odd weight(s)
+    n =  8 :   253 exponents checked, 0 odd weight(s)
+    n =  9 :   509 exponents checked, 0 odd weight(s)
+    n = 10 :  1021 exponents checked, 0 odd weight(s)
+    n = 11 :  2045 exponents checked, 0 odd weight(s)
+    n = 12 :  4093 exponents checked, 0 odd weight(s)
+
+(ii) f(x) = Tr_1^n(x^{d1}+x^{d2})
+    n =  4 :    78 pairs checked, 0 odd weight(s)
+    n =  5 :   406 pairs checked, 0 odd weight(s)
+    n =  6 :  1830 pairs checked, 0 odd weight(s)
+    n =  7 :  7750 pairs checked, 0 odd weight(s)
+    n =  8 : 31878 pairs checked, 0 odd weight(s)
+
+All functions in both searched families have even weight.
+End of Remark 5 verification.

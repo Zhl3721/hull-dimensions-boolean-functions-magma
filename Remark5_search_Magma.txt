@@ -1,0 +1,115 @@
+// =====================================================================
+// Program:      Remark5_search_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Remark 5 (no label; end of Section 4, Hull-917.tex),
+//   which reports the search for dim(Hull(C_f)) = n over
+//     f = Tr_1^n(x^d)          with 3 <= n <= 12, 2 <= d <= 2^n-2,
+//     f = Tr_1^n(x^d1 + x^d2)  with 4 <= n <=  8, 2 <= d1 < d2 <= 2^n-2,
+//   exponents reduced to cyclotomic cosets modulo 2^n-1 (each
+//   equivalence class is recorded only once).
+//
+// RELATED RESULTS USED
+//   Theorem 1 (th:1.27.1): dim(Hull(C_f)) = n iff F = 0 and a = 1,
+//   where F(b) = sum_x f(x) Tr_1^n(bx), a = wt(f) mod 2; equivalently
+//   W_f(b) - W_f(0) = 0 (mod 8) for all b and W_f(0) = 2 (mod 4)
+//   (Eqs. (20),(21), labels eq:8.31.ws.004, eq:8.31.ws.005).
+//   F = 0 is tested on the basis elements alpha_j of F_{2^n}
+//   (F is F_2-linear).
+//
+// FIELD
+//   Magma default GF(2^n); no primitive polynomial is prescribed in the
+//   remark for this search.
+//
+// VERIFIED OUTPUT
+//   No f with dim(Hull(C_f)) = n among all the cases searched.
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "reproduces ...
+//   the searches reported in Remark 4 (now Remark 5)".
+// =====================================================================
+clear;
+nmax1 := 12;
+nmax2 := 8;
+Z := IntegerRing();
+
+function CosetReps(N)
+    reps := {};
+    for d in [1..N-1] do
+        r := d; e := (2*d) mod N;
+        while e ne d do
+            if e lt r then r := e; end if;
+            e := (2*e) mod N;
+        end while;
+        Include(~reps, r);
+    end for;
+    return Sort(Setseq(reps));
+end function;
+
+printf "One-term search  f = Tr(x^d),  3 <= n <= %o\n", nmax1;
+for n in [3..nmax1] do
+    F := GF(2^n); g := F.1; N := 2^n-1;
+    pw := [g^i : i in [0..N-1]];
+    tr0 := [Z!Trace(pw[i]) : i in [1..N]];
+    B := Basis(F);
+    trB := [[Z!Trace(B[j]*pw[i]) : i in [1..N]] : j in [1..n]];
+    reps := [d : d in CosetReps(N) | d ge 2 and d le N-2];
+    found := 0; nzero := 0;
+    for d in reps do
+        wt := 0; Fj := [0 : j in [1..n]];
+        for t in [0..N-1] do
+            if tr0[((t*d) mod N)+1] eq 1 then
+                wt +:= 1;
+                for j in [1..n] do Fj[j] +:= trB[j][t+1]; end for;
+            end if;
+        end for;
+        fzero := &and[Fj[j] mod 2 eq 0 : j in [1..n]];
+        if fzero then nzero +:= 1; end if;
+        if fzero and (wt mod 2 eq 1) then
+            printf "  FOUND dim(hull)=n : n=%o, d=%o\n", n, d;
+            found +:= 1;
+        end if;
+    end for;
+    printf "n=%o: %o cyclotomic cosets, %o with F=0, %o with dim(hull)=n\n",
+           n, #reps, nzero, found;
+end for;
+
+printf "Two-term search  f = Tr(x^d1+x^d2),  4 <= n <= %o\n", nmax2;
+for n in [4..nmax2] do
+    F := GF(2^n); g := F.1; N := 2^n-1;
+    pw := [g^i : i in [0..N-1]];
+    tr0 := [Z!Trace(pw[i]) : i in [1..N]];
+    B := Basis(F);
+    trB := [[Z!Trace(B[j]*pw[i]) : i in [1..N]] : j in [1..n]];
+    reps := [d : d in CosetReps(N) | d ge 2 and d le N-2];
+    found := 0; total := 0;
+    for i in [1..#reps] do
+        for j in [i+1..#reps] do
+            total +:= 1;
+            d1 := reps[i]; d2 := reps[j];
+            wt := 0; Fj := [0 : j in [1..n]];
+            for t in [0..N-1] do
+                v := (tr0[((t*d1) mod N)+1] + tr0[((t*d2) mod N)+1]) mod 2;
+                if v eq 1 then
+                    wt +:= 1;
+                    for j in [1..n] do Fj[j] +:= trB[j][t+1]; end for;
+                end if;
+            end for;
+            fzero := &and[Fj[j] mod 2 eq 0 : j in [1..n]];
+            if fzero and (wt mod 2 eq 1) then
+                printf "  FOUND dim(hull)=n : n=%o, (d1,d2)=(%o,%o)\n",
+                       n, d1, d2;
+                found +:= 1;
+            end if;
+        end for;
+    end for;
+    printf "n=%o: %o coset pairs, %o with dim(hull)=n\n", n, total, found;
+end for;
+printf "Search finished.\n";
+//quit;

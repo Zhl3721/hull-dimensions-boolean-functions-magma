@@ -1,0 +1,223 @@
+// =====================================================================
+// Program:      Lemma12_m5m6_Magma.txt
+//
+// Direct verification of Lemma 12 (le:1.24.3) for m = 5 and m = 6
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is (the final quit; is commented
+//                out, so the session stays open).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end, add a
+//                final "quit;" line.
+//
+// For every tuple (lambda1,lambda2,w1,w2) appearing in the paper:
+//   * the field is built with the stated primitive polynomial;
+//   * the four values (B1,B2,B3,B4) are recomputed and compared with
+//     the values listed in Example 5.3 / Example 5.2;
+//   * the full Walsh spectrum of
+//       f(x)=Tr_1^m(l1 x^{2^m+1})Tr_1^m(l2 x^{2^m+1})
+//            +(x+w1)^{2^n-1}+(x+w2)^{2^n-1}
+//     is computed directly from this definition for all beta in F_{2^n}
+//     (fast Walsh-Hadamard transform with respect to the trace pairing,
+//      using a dual basis), and compared with the closed form of
+//     Lemma 12 / Appendix A for the corresponding case;
+//   * the identities sum 1 = 2^n, sum W_f = 2^n(-1)^{f(0)},
+//     sum W_f^2 = 2^{2n} are checked.
+// =====================================================================
+clear;
+Z := IntegerRing();
+
+function RelTrace(a, m, F)
+    t := F!0;
+    for i in [0..m-1] do t +:= a^(2^i); end for;
+    return t;
+end function;
+
+function MergePairs(P)
+    Q := Sort(P);
+    out := [];
+    for p in Q do
+        if p[2] eq 0 then continue; end if;
+        if #out gt 0 and out[#out][1] eq p[1] then
+            out[#out] := <out[#out][1], out[#out][2] + p[2]>;
+        else
+            Append(~out, <p[1], p[2]>);
+        end if;
+    end for;
+    return out;
+end function;
+
+function CaseIndex(B)
+    l := [B[1], B[2], B[3], B[4]];
+    if l eq [0,0,0,0] or l eq [1,0,1,0] or l eq [1,1,0,0] then return 0; end if;
+    if l eq [0,0,0,1] or l eq [1,0,1,1] or l eq [1,1,0,1] then return 1; end if;
+    if l eq [0,0,1,0] or l eq [0,1,0,0] or l eq [1,1,1,0] then return 2; end if;
+    if l eq [0,0,1,1] or l eq [0,1,0,1] or l eq [1,1,1,1] then return 3; end if;
+    if l eq [0,1,1,0] then return 4; end if;
+    if l eq [0,1,1,1] then return 5; end if;
+    if l eq [1,0,0,0] then return 6; end if;
+    if l eq [1,0,0,1] then return 7; end if;
+    return -1;
+end function;
+
+function PairsFromClosedForm(m, ci)
+    n := 2*m; h := 2^(m-1);
+    P := [<2^(n-1) - h - 4, 1>];
+    for t in [0,1] do
+        v1 := (-1)^t*h-4; v2 := (-1)^t*3*h-4;
+        v3 := (-1)^t*h+4; v4 := (-1)^t*3*h+4;
+        v5 := (-1)^t*3*h; v6 := (-1)^t*h;
+        if ci eq 0 then
+            Append(~P, <v1, 3*2^(n-5)+(3-8*t)*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)>);
+            Append(~P, <v4, 2^(n-5)>);
+            Append(~P, <v5, 2^(n-4)>);
+            Append(~P, <v6, 3*2^(n-4)>);
+        elif ci eq 1 then
+            Append(~P, <v1, 3*2^(n-5)-(3-2*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)+(5-6*t)*2^(m-4)>);
+            Append(~P, <v3, 3*(2^(n-5)+(1-2*t)*2^(m-4))>);
+            Append(~P, <v4, 2^(n-5)-(1-2*t)*2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)-(1-2*t)*2^(m-3)>);
+            Append(~P, <v6, 3*(2^(n-4)+(1-2*t)*2^(m-3))>);
+        elif ci eq 2 then
+            Append(~P, <v1, 3*2^(n-5)+(9-16*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)-2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)-2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)+2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)+2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)-2^(m-3)>);
+        elif ci eq 3 then
+            Append(~P, <v1, 3*2^(n-5)+t*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+(1-3*t)*2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)+(1-3*t)*2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)+t*2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)+t*2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)+(1-3*t)*2^(m-2)>);
+        elif ci eq 4 then
+            Append(~P, <v1, 3*2^(n-5)+(3-4*t)*2^(m-2)-t>);
+            Append(~P, <v2, 2^(n-5)-2^(m-2)>);
+            Append(~P, <v3, 3*2^(n-5)-2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)+2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)+2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)-2^(m-2)>);
+        elif ci eq 5 then
+            Append(~P, <v1, 3*2^(n-5)+(3+2*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)-(1+6*t)*2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)+(1-6*t)*2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)+(1+2*t)*2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)+(1+2*t)*2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)+(1-6*t)*2^(m-3)>);
+        elif ci eq 6 then
+            Append(~P, <v1, 3*2^(n-5)+(3-16*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)+5*2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)+2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)-2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)-2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)+2^(m-3)>);
+        elif ci eq 7 then
+            Append(~P, <v1, 3*2^(n-5)-(3-t)*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+(4-3*t)*2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)+(2-3*t)*2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)-(1-t)*2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)-(1-t)*2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)+(2-3*t)*2^(m-2)>);
+        end if;
+    end for;
+    return MergePairs(P);
+end function;
+
+procedure Verify(label, m, poly, es, expB, printspectrum)
+    n := 2*m; sz := 2^n;
+    F := ext<GF(2) | poly>;
+    xi := F.1;
+    lambda1 := F!1; lambda2 := xi^es[1];
+    w1 := xi^es[2]; w2 := xi^es[3]; w3 := w1 + w2;
+    lam3 := lambda1 + lambda2;
+    mu := [(lambda1^(-1)+lambda2^(-1))^(-1),
+           (lambda1^(-1)+lam3^(-1))^(-1),
+           (lambda2^(-1)+lam3^(-1))^(-1),
+           (lambda1^(-1)+lambda2^(-1)+lam3^(-1))^(-1)];
+    hyp := true;
+    for c in [lambda1, lambda2, lam3] do
+        for w in [w1, w2, w3] do
+            if Z!RelTrace(c*w^(2^m+1), m, F) ne 0 then hyp := false; end if;
+        end for;
+    end for;
+    B := [];
+    for mm in mu do
+        v := [Z!RelTrace(mm*w^(2^m+1), m, F) : w in [w1, w2, w3]];
+        if v[1] ne v[2] or v[1] ne v[3] then hyp := false; end if;
+        Append(~B, v[1]);
+    end for;
+
+    // direct Walsh spectrum via fast Walsh-Hadamard transform
+    alpha := Basis(F);
+    M := Matrix(GF(2), n, n, [[Z!Trace(alpha[i]*alpha[j]) : j in [1..n]] : i in [1..n]]);
+    C := M^-1;
+    bet := [&+[(Z!C[k][j])*alpha[k] : k in [1..n]] : j in [1..n]];
+    a := [0 : i in [1..sz]];
+    for mask in [0..sz-1] do
+        x := F!0;
+        for j in [0..n-1] do
+            if (mask div 2^j) mod 2 eq 1 then x +:= alpha[j+1]; end if;
+        end for;
+        fv := 0;
+        if x ne 0 then
+            xp := x^(2^m+1);
+            fv := (Z!RelTrace(lambda1*xp,m,F)*Z!RelTrace(lambda2*xp,m,F)) mod 2;
+        end if;
+        if x eq w1 then fv := (fv+1) mod 2; end if;
+        if x eq w2 then fv := (fv+1) mod 2; end if;
+        a[mask+1] := (fv eq 0) select 1 else -1;
+    end for;
+    step := 1;
+    for j in [0..n-1] do
+        for mask in [0..sz-1] do
+            if (mask div step) mod 2 eq 0 then
+                u := a[mask+1]; v := a[mask+step+1];
+                a[mask+1] := u+v; a[mask+step+1] := u-v;
+            end if;
+        end for;
+        step *:= 2;
+    end for;
+    V := Sort(a); P := []; i := 1;
+    while i le #V do
+        j := i;
+        while j lt #V and V[j+1] eq V[i] do j +:= 1; end while;
+        Append(~P, <V[i], j-i+1>);
+        i := j+1;
+    end while;
+
+    PC := PairsFromClosedForm(m, CaseIndex(<B[1],B[2],B[3],B[4]>));
+    tot := &+[p[2] : p in P];
+    sumW := &+[p[1]*p[2] : p in P];
+    sumW2 := &+[p[1]^2*p[2] : p in P];
+    mapok := (P eq PC);
+    idok := (tot eq sz) and (sumW eq sz) and (sumW2 eq sz^2);
+    ok := hyp and (B eq expB) and mapok and idok;
+    printf "%o: B=%o (expected %o), closed-form match=%o, identities=%o -> %o\n",
+           label, B, expB, mapok, idok, ok select "PASS" else "FAIL";
+    if printspectrum then
+        printf "  full spectrum (%o values):\n", #a;
+        for p in P do printf "    W=%o : %o\n", p[1], p[2]; end for;
+    end if;
+end procedure;
+
+P<x> := PolynomialRing(GF(2));
+poly5 := x^10 + x^6 + x^5 + x^3 + x^2 + x + 1;
+tuples5 := [ [33,15,356],[363,16,357],[33,7,348],
+             [99,30,371],[33,14,355],[99,25,366],
+             [33,1,342],[99,1,342],[33,28,369],
+             [363,19,360],[33,27,368],[33,29,370],[99,29,370] ];
+B5 := [ [0,0,1,0],[0,1,0,0],[1,1,1,0],
+        [0,0,1,1],[0,1,0,1],[0,1,1,0],
+        [0,1,1,1],[1,0,0,0],[1,0,0,1],
+        [1,0,1,0],[1,1,0,0],[1,0,1,1],[1,1,0,1] ];
+for k in [1..#tuples5] do
+    Verify(Sprintf("Example 5.3, m=5, tuple #%o", k), 5, poly5, tuples5[k], B5[k], false);
+end for;
+
+poly6 := x^12 + x^7 + x^6 + x^5 + x^3 + x + 1;
+Verify("Example 5.2, m=6", 6, poly6, [1170,2034,3204], [0,0,0,0], true);
+//quit;

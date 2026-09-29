@@ -1,0 +1,90 @@
+// =====================================================================
+// Program:      Proposition2_existence_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Proposition 2 (label cl:exist), Section 5, in Hull-917.tex
+//  : for every m >= 9 there exist lambda_1, lambda_2 in
+//   F_{2^m}^* and distinct w_1, w_2 in F_{2^n}^* (n = 2m) satisfying all
+//   the hypotheses of Lemma 12 with (B_1,B_2,B_3,B_4) = (0,0,0,0).
+//
+// CONSTRUCTION (proof of Proposition 2)
+//   Take lambda_1 = 1, lambda_2 = xi a primitive element of F_{2^m},
+//   lambda_3 = 1 + xi, and pick two distinct nonzero elements a_1,a_2 of
+//   S = { a in F_{2^m} : Tr_1^m(lambda_j a) = 0 for j=1,2,3 and
+//                          Tr_1^m(mu_k a) = 0 for k=1,2,3,4 },
+//   where mu_1 = (l1^-1+l2^-1)^-1, mu_2 = (l1^-1+l3^-1)^-1,
+//         mu_3 = (l2^-1+l3^-1)^-1, mu_4 = (l1^-1+l2^-1+l3^-1)^-1.
+//   Then w_i = a_i^(2^(m-1)) is the square root of a_i and
+//   w_i^{2^m+1} = w_i^2 = a_i, so Tr_1^m(c w_i^{2^m+1}) = Tr_1^m(c a_i).
+//
+// RELATED RESULTS USED
+//   Lemma 12 (le:1.24.3) (hypotheses verified), Lemma 11 (le:12.10.1).
+//
+// FIELD
+//   Magma default GF(2^n); no primitive polynomial is prescribed for
+//   this existence check.  F_{2^m} is represented as the subfield
+//   { z in F_{2^n} : z^{2^m} = z }.
+//
+// VERIFIED OUTPUT
+//   For m = 9,10,11,12,13,14: dim(S) >= m-7 (the bound used in the proof
+//   of Proposition 2; in the cases tested |S| = 2^{m-6} >= 4) and the
+//   constructed w1, w2, w3 are distinct nonzero elements with
+//   B=(0,0,0,0); all the hypotheses of Lemma 12 hold.
+//   (This program covers m >= 9, as in the proof of Proposition 2.)
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "verifies the
+//   parameter-existence checks ... for m >= 9".
+// =====================================================================
+clear;
+Z := IntegerRing();
+
+function RelTrace(a, m, F)
+    t := F!0;
+    for i in [0..m-1] do t +:= a^(2^i); end for;
+    return t;
+end function;
+
+for m in [9..14] do
+    n := 2*m;
+    F := GF(2^n);
+    g := F.1^((2^n-1) div (2^m-1));
+
+    lam1 := F!1; lam2 := g; lam3 := lam1 + lam2;
+    mu1 := (lam1^(-1) + lam2^(-1))^(-1);
+    mu2 := (lam1^(-1) + lam3^(-1))^(-1);
+    mu3 := (lam2^(-1) + lam3^(-1))^(-1);
+    mu4 := (lam1^(-1) + lam2^(-1) + lam3^(-1))^(-1);
+    cs := [lam1, lam2, lam3, mu1, mu2, mu3, mu4];
+
+    c123 := lam1^(-1) + lam2^(-1) + lam3^(-1);
+    S := [a : a in F | a^(2^m) eq a and
+         &and[RelTrace(c*a, m, F) eq 0 : c in cs]];
+    nz := [a : a in S | a ne 0];
+
+    ok := (c123 ne 0) and (#nz ge 2);
+    w1 := nz[1]^(2^(m-1));
+    w2 := nz[2]^(2^(m-1));
+    w3 := w1 + w2;
+    if w1 eq w2 or w1 eq w3 or w2 eq w3 then ok := false; end if;
+    for w in [w1, w2, w3] do
+        for c in cs do
+            if RelTrace(c*w^(2^m+1), m, F) ne 0 then ok := false; break; end if;
+        end for;
+    end for;
+
+    pw := [g^i : i in [0..2^m-2]];
+    e1 := Position(pw, nz[1]) - 1;
+    e2 := Position(pw, nz[2]) - 1;
+    printf "m=%o: |S|=%o, |S\\{0}|=%o,  ", m, #S, #nz;
+    printf "w1=g^%o, w2=g^%o, distinct=%o, B=(0,0,0,0): %o\n",
+           (e1*2^(m-1)) mod (2^m-1), (e2*2^(m-1)) mod (2^m-1),
+           (w1 ne w2) and (w1 ne w3) and (w2 ne w3), ok;
+end for;
+//quit;

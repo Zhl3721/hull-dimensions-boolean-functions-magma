@@ -1,0 +1,454 @@
+// =====================================================================
+// Program:      Lemma12_AppendixA_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Lemma 12 (label le:1.24.3), Section 5, and its proof in Appendix A
+//   of Hull-917.tex.
+//   Related: Eq. (27) (eq:1.24.2), Lemma 11 (le:12.10.1).
+//
+// TABLES AND EQUATIONS REPRODUCED / CHECKED
+//   Table VIII (tab:Ni_correspondence): Walsh values vs multiplicities;
+//   Table IX (tb:appB):  W_f(beta) for each tuple (A1,A2,A3,V1,V2);
+//   Table X (tb:Di):     |R_i| and D_i;
+//   Table XI (tb:caseD): D-vectors for the eight cases;
+//   Eqs. (50),(51),(52) (eq:purple-sum, eq:purple-Phi, eq:purple-Ni).
+//
+// PART A
+//   Verifies the closed-form spectra of Appendix A against the
+//   character-sum formula of the proof:
+//     Phi(t) = sum_{S} (-1)^{u_S} (1 + sigma_S c(v1,v2)),
+//     D_i    = sum_{t in R_i} Phi(t),
+//     N_i    = (|R_i| 2^n - 2^m D_i)/2^5 - delta_{i,7},
+//   for m = 3 (the 8 admissible tuples of Theorem 3) and for every one
+//   of the 16 tuples (B1,B2,B3,B4) when 4 <= m <= 10.
+//   For every displayed distribution it also checks the three
+//   consistency identities requested in Comment 6 of Reviewer 2:
+//     sum_beta 1 = 2^n,  sum_beta W_f(beta) = 2^n (-1)^{f(0)} = 2^n,
+//     sum_beta W_f(beta)^2 = 2^{2n},
+//   together with nonnegativity, integrality and sum 2^n - 1 of the N_i.
+//
+// PART B
+//   Ground truth: for m = 3 and 4 all admissible quadruples
+//   (lambda_1,lambda_2,w_1,w_2) are enumerated, the Walsh spectrum of f
+//   is computed directly from its definition, and compared with the
+//   closed form of Appendix A.  (For m = 3 the only realized tuple is
+//   B=(1,1,1,1); for m = 4 no admissible quadruple is realized inside
+//   the enumeration - compare the remark in Section 5.)
+//
+// PART C
+//   Prints N_1..N_12 for all 16 tuples (B1,B2,B3,B4) as expressions
+//     N_i = |R_i| 2^{n-5} - D_i 2^{m-5} - delta_{i,7}
+//   together with the corresponding Walsh value, and the numeric
+//   vectors N_1..N_12 for m = 4,6,8.
+//
+// FIELD
+//   Magma default GF(2^n); no primitive polynomial is prescribed for
+//   these symbolic checks.  Field elements are indexed by their discrete
+//   logarithm with respect to the primitive element F.1 (zero -> 1).
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "verifies ... the
+//   consistency checks of the Walsh-spectrum tables in Lemma 12 and Appendix A".
+// =====================================================================
+clear;
+Z := IntegerRing();
+
+// R_i: rows of Table IX; the Walsh value attached to row R_i is
+// returned by RowValue(i,m).
+R := [
+ [<0,0,1,0,0>],
+ [<0,0,1,0,1>, <0,0,1,1,0>],
+ [<0,0,1,1,1>],
+ [<1,1,0,0,0>],
+ [<1,1,0,0,1>, <1,1,0,1,0>],
+ [<1,1,0,1,1>],
+ [<0,0,0,0,0>, <1,0,1,0,0>, <0,1,1,0,0>],
+ [<0,0,0,0,1>, <1,0,1,0,1>, <0,1,1,0,1>, <0,0,0,1,0>, <1,0,1,1,0>, <0,1,1,1,0>],
+ [<0,0,0,1,1>, <1,0,1,1,1>, <0,1,1,1,1>],
+ [<1,0,0,0,0>, <0,1,0,0,0>, <1,1,1,0,0>],
+ [<1,0,0,0,1>, <0,1,0,0,1>, <1,1,1,0,1>, <1,0,0,1,0>, <0,1,0,1,0>, <1,1,1,1,0>],
+ [<1,0,0,1,1>, <0,1,0,1,1>, <1,1,1,1,1>]
+];
+
+function KeyOf(x)
+    if x eq 0 then return 1; end if;
+    return Log(x) + 2;
+end function;
+
+function Phi(t, B)
+    u1 := t[1]; u2 := t[2]; u3 := t[3]; v1 := t[4]; v2 := t[5];
+    c := (-1)^v1 + (-1)^v2 + (-1)^((v1+v2) mod 2);
+    s := 0;
+    for S in [[1],[2],[3],[1,2],[1,3],[2,3],[1,2,3]] do
+        uS := 0;
+        for j in S do
+            if j eq 1 then uS +:= u1;
+            elif j eq 2 then uS +:= u2;
+            else uS +:= u3;
+            end if;
+        end for;
+        uS := uS mod 2;
+        sig := 1;
+        if S eq [1,2] then sig := (-1)^B[1];
+        elif S eq [1,3] then sig := (-1)^B[2];
+        elif S eq [2,3] then sig := (-1)^B[3];
+        elif S eq [1,2,3] then sig := (-1)^B[4];
+        end if;
+        s +:= (-1)^uS * (1 + sig*c);
+    end for;
+    return s;
+end function;
+
+function RowValue(i, m)
+    h := 2^(m-1);
+    if i eq 1 then return -3*h-4; end if;
+    if i eq 2 then return -3*h; end if;
+    if i eq 3 then return -3*h+4; end if;
+    if i eq 4 then return 3*h-4; end if;
+    if i eq 5 then return 3*h; end if;
+    if i eq 6 then return 3*h+4; end if;
+    if i eq 7 then return -h-4; end if;
+    if i eq 8 then return -h; end if;
+    if i eq 9 then return -h+4; end if;
+    if i eq 10 then return h-4; end if;
+    if i eq 11 then return h; end if;
+    return h+4;
+end function;
+
+function Nvector(m, B)
+    n := 2*m;
+    D := [0 : i in [1..12]];
+    for i in [1..12] do
+        for t in R[i] do D[i] +:= Phi(t, B); end for;
+    end for;
+    N := [0 : i in [1..12]];
+    divok := true;
+    for i in [1..12] do
+        num := #R[i]*2^n - 2^m*D[i];
+        if num mod 32 ne 0 then divok := false; end if;
+        N[i] := num div 32 - (i eq 7 select 1 else 0);
+    end for;
+    return N, D, divok;
+end function;
+
+function MergePairs(P)
+    Q := Sort(P);
+    out := [];
+    for p in Q do
+        if p[2] eq 0 then continue; end if;
+        if #out gt 0 and out[#out][1] eq p[1] then
+            out[#out] := <out[#out][1], out[#out][2] + p[2]>;
+        else
+            Append(~out, <p[1], p[2]>);
+        end if;
+    end for;
+    return out;
+end function;
+
+function PairsFromN(m, N)
+    P := [];
+    for i in [1..12] do
+        if N[i] ne 0 then Append(~P, <RowValue(i, m), N[i]>); end if;
+    end for;
+    Append(~P, <2^(2*m-1) - 2^(m-1) - 4, 1>);
+    return MergePairs(P);
+end function;
+
+function CaseIndex(B)
+    l := [B[1], B[2], B[3], B[4]];
+    if l eq [0,0,0,0] or l eq [1,0,1,0] or l eq [1,1,0,0] then return 0; end if;
+    if l eq [0,0,0,1] or l eq [1,0,1,1] or l eq [1,1,0,1] then return 1; end if;
+    if l eq [0,0,1,0] or l eq [0,1,0,0] or l eq [1,1,1,0] then return 2; end if;
+    if l eq [0,0,1,1] or l eq [0,1,0,1] or l eq [1,1,1,1] then return 3; end if;
+    if l eq [0,1,1,0] then return 4; end if;
+    if l eq [0,1,1,1] then return 5; end if;
+    if l eq [1,0,0,0] then return 6; end if;
+    if l eq [1,0,0,1] then return 7; end if;
+    return -1;
+end function;
+
+function PairsFromClosedForm(m, ci)
+    n := 2*m; h := 2^(m-1);
+    P := [<2^(n-1) - h - 4, 1>];
+    for t in [0,1] do
+        v1 := (-1)^t*h-4; v2 := (-1)^t*3*h-4;
+        v3 := (-1)^t*h+4; v4 := (-1)^t*3*h+4;
+        v5 := (-1)^t*3*h; v6 := (-1)^t*h;
+        if ci eq 0 then
+            Append(~P, <v1, 3*2^(n-5)+(3-8*t)*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)>);
+            Append(~P, <v4, 2^(n-5)>);
+            Append(~P, <v5, 2^(n-4)>);
+            Append(~P, <v6, 3*2^(n-4)>);
+        elif ci eq 1 then
+            Append(~P, <v1, 3*2^(n-5)-(3-2*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)+(5-6*t)*2^(m-4)>);
+            Append(~P, <v3, 3*(2^(n-5)+(1-2*t)*2^(m-4))>);
+            Append(~P, <v4, 2^(n-5)-(1-2*t)*2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)-(1-2*t)*2^(m-3)>);
+            Append(~P, <v6, 3*(2^(n-4)+(1-2*t)*2^(m-3))>);
+        elif ci eq 2 then
+            Append(~P, <v1, 3*2^(n-5)+(9-16*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)-2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)-2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)+2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)+2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)-2^(m-3)>);
+        elif ci eq 3 then
+            Append(~P, <v1, 3*2^(n-5)+t*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+(1-3*t)*2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)+(1-3*t)*2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)+t*2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)+t*2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)+(1-3*t)*2^(m-2)>);
+        elif ci eq 4 then
+            Append(~P, <v1, 3*2^(n-5)+(3-4*t)*2^(m-2)-t>);
+            Append(~P, <v2, 2^(n-5)-2^(m-2)>);
+            Append(~P, <v3, 3*2^(n-5)-2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)+2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)+2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)-2^(m-2)>);
+        elif ci eq 5 then
+            Append(~P, <v1, 3*2^(n-5)+(3+2*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)-(1+6*t)*2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)+(1-6*t)*2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)+(1+2*t)*2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)+(1+2*t)*2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)+(1-6*t)*2^(m-3)>);
+        elif ci eq 6 then
+            Append(~P, <v1, 3*2^(n-5)+(3-16*t)*2^(m-4)-t>);
+            Append(~P, <v2, 2^(n-5)+5*2^(m-4)>);
+            Append(~P, <v3, 3*2^(n-5)+2^(m-4)>);
+            Append(~P, <v4, 2^(n-5)-2^(m-4)>);
+            Append(~P, <v5, 2^(n-4)-2^(m-3)>);
+            Append(~P, <v6, 3*2^(n-4)+2^(m-3)>);
+        elif ci eq 7 then
+            Append(~P, <v1, 3*2^(n-5)-(3-t)*2^(m-3)-t>);
+            Append(~P, <v2, 2^(n-5)+(4-3*t)*2^(m-3)>);
+            Append(~P, <v3, 3*2^(n-5)+(2-3*t)*2^(m-3)>);
+            Append(~P, <v4, 2^(n-5)-(1-t)*2^(m-3)>);
+            Append(~P, <v5, 2^(n-4)-(1-t)*2^(m-2)>);
+            Append(~P, <v6, 3*2^(n-4)+(2-3*t)*2^(m-2)>);
+        end if;
+    end for;
+    return MergePairs(P);
+end function;
+
+function SamePairs(A, B)
+    if #A ne #B then return false; end if;
+    for i in [1..#A] do
+        if A[i][1] ne B[i][1] or A[i][2] ne B[i][2] then return false; end if;
+    end for;
+    return true;
+end function;
+
+// ------------------------- Part A -------------------------
+printf "Part A: character-sum formula (Appendix A) vs closed forms\n";
+allokA := true;
+for m in [3..10] do
+    n := 2*m;
+    adm3 := [<0,0,0,0>, <1,0,1,0>, <1,1,0,0>, <1,0,0,1>,
+             <0,0,1,1>, <0,1,0,1>, <1,1,1,1>, <0,1,1,0>];
+    okm := true; tested := 0;
+    for B in [<a,b,c,d> : a in [0,1], b in [0,1], c in [0,1], d in [0,1]] do
+        if m eq 3 and not (B in adm3) then continue; end if;
+        tested +:= 1;
+        N, D, divok := Nvector(m, B);
+        A := PairsFromN(m, N);
+        Cf := PairsFromClosedForm(m, CaseIndex(B));
+        same := SamePairs(A, Cf);
+        neg := &or[N[i] lt 0 : i in [1..12]];
+        sumok := (&+N eq 2^n-1);
+        sumW := &+[ p[1]*p[2] : p in A ];
+        sumW2 := &+[ p[1]^2*p[2] : p in A ];
+        idok := (sumW eq 2^n) and (sumW2 eq 2^(2*n));
+        if not (same and divok and not neg and sumok and idok) then
+            printf "  FAIL m=%o B=%o (same=%o div=%o neg=%o sum=%o id=%o)\n",
+                   m, B, same, divok, neg, sumok, idok;
+            okm := false; allokA := false;
+        end if;
+    end for;
+    printf "m=%o: %o tuples tested: %o\n", m, tested, okm select "PASS" else "FAIL";
+end for;
+
+// ------------------------- Part B -------------------------
+function RelTrace(a, m, F)
+    t := F!0;
+    for i in [0..m-1] do t +:= a^(2^i); end for;
+    return t;
+end function;
+
+function DirectSpectrum(m, F, lam1, lam2, w1, w2, pw, N)
+    n := 2*m;
+    signs := [0 : i in [1..N+1]];
+    for i in [0..N-1] do
+        x := pw[i+1];
+        xp := x^(2^m+1);
+        fv := (Z!RelTrace(lam1*xp, m, F) * Z!RelTrace(lam2*xp, m, F)) mod 2;
+        if x eq w1 then fv := (fv+1) mod 2; end if;
+        if x eq w2 then fv := (fv+1) mod 2; end if;
+        signs[i+2] := (fv eq 0) select 1 else -1;
+    end for;
+    w0 := 1;  // contribution of x = 0 to W_f(0)
+    for i in [1..N] do w0 +:= signs[i+1]; end for;
+    vals := [w0];
+    for bi in [0..N-1] do
+        beta := pw[bi+1];
+        s := 1;  // contribution of x = 0
+        for xi in [0..N-1] do
+            tv := Z!Trace(beta*pw[xi+1]);
+            sgn := signs[xi+2];
+            s +:= (tv eq 0) select sgn else -sgn;
+        end for;
+        Append(~vals, s);
+    end for;
+    V := Sort(vals);
+    P := []; i := 1;
+    while i le #V do
+        j := i;
+        while j lt #V and V[j+1] eq V[i] do j +:= 1; end while;
+        Append(~P, <V[i], j-i+1>);
+        i := j+1;
+    end while;
+    return P;
+end function;
+
+printf "Part B: direct Walsh spectra for m=3,4\n";
+allokB := true;
+for m in [3,4] do
+    n := 2*m; N := 2^n-1;
+    F := GF(2^n);
+    pw := [F.1^i : i in [0..N-1]];
+    Fm := [z : z in F | z^(2^m) eq z];
+    sq := [F!0 : i in [1..N+1]];
+    for i in [0..N-1] do sq[i+2] := pw[i+1]^(2^m+1); end for;
+    foundB := [];
+    for lam2 in Fm do
+        if lam2 eq 0 or lam2 eq 1 then continue; end if;
+        lam1 := F!1; lam3 := lam1 + lam2;
+        if lam1^(-1) + lam2^(-1) + lam3^(-1) eq 0 then continue; end if;
+        mus := [(lam1^(-1)+lam2^(-1))^(-1),
+                (lam1^(-1)+lam3^(-1))^(-1),
+                (lam2^(-1)+lam3^(-1))^(-1),
+                (lam1^(-1)+lam2^(-1)+lam3^(-1))^(-1)];
+        cs := [lam1, lam2, lam3] cat mus;
+        TT := [];
+        for k in [1..7] do
+            TT[k] := [0 : i in [1..N+1]];
+            for i in [1..N] do TT[k][i+1] := Z!RelTrace(cs[k]*sq[i+1], m, F); end for;
+        end for;
+        stop := false;
+        for i1 in [1..N-1] do
+            if stop then break; end if;
+            w1 := pw[i1];
+            for i2 in [i1+1..N] do
+                w2 := pw[i2]; w3 := w1 + w2;
+                i3 := KeyOf(w3);
+                hyp := true;
+                for k in [1..3] do
+                    if TT[k][i1+1] ne 0 or TT[k][i2+1] ne 0 or TT[k][i3] ne 0 then
+                        hyp := false; break;
+                    end if;
+                end for;
+                if not hyp then continue; end if;
+                Bs := [0,0,0,0];
+                for k in [4..7] do
+                    if TT[k][i1+1] ne TT[k][i2+1] or TT[k][i1+1] ne TT[k][i3] then
+                        hyp := false; break;
+                    end if;
+                    Bs[k-3] := TT[k][i1+1];
+                end for;
+                if not hyp then continue; end if;
+                B := <Bs[1], Bs[2], Bs[3], Bs[4]>;
+                if B in foundB then continue; end if;
+                Append(~foundB, B);
+                Sact := DirectSpectrum(m, F, lam1, lam2, w1, w2, pw, N);
+                Scl := PairsFromClosedForm(m, CaseIndex(B));
+                same := SamePairs(Sact, Scl);
+                if not same then allokB := false; end if;
+                printf "  m=%o B=%o: %o\n", m, B, same select "PASS" else "FAIL";
+                if m eq 4 and #foundB eq 16 then stop := true; break; end if;
+            end for;
+        end for;
+    end for;
+    printf "m=%o: %o admissible B realized (of 16)\n", m, #foundB;
+end for;
+
+// ------------------------- Part C -------------------------
+// N_1..N_12 for every tuple (B1,B2,B3,B4): symbolic expression
+//   N_i = |R_i| 2^{n-5} - D_i 2^{m-5} - delta_{i,7}
+// and numeric values for m = 4, 6, 8.
+function GenN(i, D)
+    k := #R[i];
+    s := (k eq 1) select "2^{n-5}" else Sprintf("%o*2^{n-5}", k);
+    if D ne 0 then
+        sign := (D gt 0) select "-" else "+";
+        absD := (D gt 0) select D else -D;
+        term := (absD eq 1) select "2^{m-5}" else Sprintf("%o*2^{m-5}", absD);
+        s := s cat Sprintf(" %o %o", sign, term);
+    end if;
+    if i eq 7 then s := s cat " - 1"; end if;
+    return s;
+end function;
+
+printf "\nPart C: N_1..N_12 for all 16 tuples (B1,B2,B3,B4)\n";
+vexpr := ["-3h-4","-3h","-3h+4","3h-4","3h","3h+4",
+          "-h-4","-h","-h+4","h-4","h","h+4"];
+for B1 in [0,1] do for B2 in [0,1] do for B3 in [0,1] do for B4 in [0,1] do
+    B := <B1,B2,B3,B4>;
+    N, D, divok := Nvector(4, B);
+    printf "B=(%o,%o,%o,%o)\n", B1, B2, B3, B4;
+    for i in [1..12] do
+        printf "   N_%o = %o   (W = %o)\n", i, GenN(i, D[i]), vexpr[i];
+    end for;
+end for; end for; end for; end for;
+
+printf "\nNumeric N_1..N_12:\n";
+for m in [4,6,8] do
+    for B1 in [0,1] do for B2 in [0,1] do for B3 in [0,1] do for B4 in [0,1] do
+        B := <B1,B2,B3,B4>;
+        N, D, divok := Nvector(m, B);
+        printf "  m=%o B=(%o,%o,%o,%o): %o\n", m, B1,B2,B3,B4, N;
+    end for; end for; end for; end for;
+end for;
+
+// ------------------------- Part D -------------------------
+// Merge the 16 tuples (B1,..,B4) with identical Walsh spectrum.
+// N_i = |R_i| 2^{n-5} - D_i 2^{m-5} - delta_{i,7}, so two tuples have
+// the same spectrum for every m iff their D-vectors coincide.
+printf "\nPart D: merging tuples with identical Walsh spectrum\n";
+function DvecOf(B)
+    N, D, divok := Nvector(4, B);
+    return D;
+end function;
+Bs := [<a,b,c,d> : a in [0,1], b in [0,1], c in [0,1], d in [0,1]];
+used := []; groups := [];
+for B in Bs do
+    if B in used then continue; end if;
+    D := DvecOf(B);
+    grp := [B];
+    for C in Bs do
+        if C eq B or C in used then continue; end if;
+        if DvecOf(C) eq D then Append(~grp, C); end if;
+    end for;
+    Append(~groups, grp);
+    used := used cat grp;
+end for;
+for g in groups do
+    printf "  case %o: ", CaseIndex(g[1]);
+    for B in g do printf "%o  ", B; end for;
+    printf "\n";
+end for;
+printf "number of distinct Walsh spectra: %o\n", #groups;
+
+printf "Summary: Part A %o, Part B %o\n",
+       allokA select "ALL PASS" else "FAILURES FOUND",
+       allokB select "ALL PASS" else "FAILURES FOUND";
+//quit;

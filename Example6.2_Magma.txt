@@ -1,0 +1,88 @@
+// =====================================================================
+// Program:      Example6.2_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Example 6.2 (label exa:m4.tr), Section 6 "A modification of a
+//   general construction", in Hull-917.tex.
+//
+// RELATED RESULTS USED
+//   Eq. (30) (code_1) for C'_f; Definition 3 (svv) for U_0, U_1;
+//   Lemma 4 (01.26.1).
+//
+// FIELD (as stated in the example)
+//   F_{2^8} with primitive element xi satisfying
+//   xi^8 + xi^4 + xi^3 + xi^2 + 1 = 0.
+//
+// OBJECT
+//   f(x) = Tr_1^m(x^{2^m+1}) = Tr_1^4(x^{17}),  m=4, n=8.
+//   For (w1,w2) = (xi,xi^8) and (xi,xi^2):
+//     C'_f, tilde C'_f (on U_0 u U_1) and Hull(C'_f) (on U_0).
+//
+// VERIFIED OUTPUT (reproduces Example 6.2)
+//   pair (xi,xi^8): C'_f [253,9,118], tilde [253,8,118], Hull [253,7,120]
+//     with the three weight enumerators listed in part (1);
+//   pair (xi,xi^2): same parameters with the enumerators of part (2).
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "reproduces all the
+//   examples in Sections 4-6".
+// =====================================================================
+clear;
+m := 4; n := 2*m;
+P<x> := PolynomialRing(GF(2));
+F<xi> := ext<GF(2) | x^8 + x^4 + x^3 + x^2 + 1>;
+
+function Trace_n(x)
+    t := GF(2)!0;
+    for i in [0..n-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+function Trace_m(x)
+    t := GF(2)!0;
+    for i in [0..m-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+
+function TraceCode(S, Bset)
+    G := ZeroMatrix(GF(2), #Bset+1, #S);
+    for i in [1..#Bset] do
+        for j in [1..#S] do G[i,j] := Trace_n(Bset[i]*S[j]); end for;
+    end for;
+    for j in [1..#S] do
+        G[#Bset+1,j] := IntegerRing()!Trace_m(S[j]^(2^m+1)) mod 2;
+    end for;
+    return LinearCode(G);
+end function;
+
+for pair in [[1,8],[1,2]] do
+    w1 := xi^(pair[1]); w2 := xi^(pair[2]);
+    S := [x : x in F | x ne 0 and x ne w1 and x ne w2];
+    U0 := [b : b in F | Trace_n(b*w1) eq 0 and Trace_n(b*w2) eq 0];
+    U1 := [b : b in F | Trace_n(b*w1) eq 1 and Trace_n(b*w2) eq 1];
+    Cfp := TraceCode(S, Basis(F));
+    Ct  := TraceCode(S, U0 cat U1);
+    Ch  := TraceCode(S, U0);
+    printf "pair (xi^%o, xi^%o):\n", pair[1], pair[2];
+    printf "  C'_f : [%o, %o, %o], hull dim %o\n",
+           Length(Cfp), Dimension(Cfp), MinimumWeight(Cfp), Dimension(Cfp meet Dual(Cfp));
+    printf "  tilde: [%o, %o, %o], hull dim %o\n",
+           Length(Ct), Dimension(Ct), MinimumWeight(Ct), Dimension(Ct meet Dual(Ct));
+    printf "  Hull : [%o, %o, %o]\n",
+           Length(Ch), Dimension(Ch), MinimumWeight(Ch);
+    for item in Sort([<t0[1], t0[2]> : t0 in WeightDistribution(Cfp) | t0[2] ne 0]) do
+        printf "    C'_f weight %o : %o\n", item[1], item[2];
+    end for;
+    for item in Sort([<t0[1], t0[2]> : t0 in WeightDistribution(Ct) | t0[2] ne 0]) do
+        printf "    tilde weight %o : %o\n", item[1], item[2];
+    end for;
+    for item in Sort([<t0[1], t0[2]> : t0 in WeightDistribution(Ch) | t0[2] ne 0]) do
+        printf "    Hull weight %o : %o\n", item[1], item[2];
+    end for;
+end for;
+//quit;

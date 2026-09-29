@@ -1,0 +1,40 @@
+==================================================================
+Magma verification of Example 4.2 (Section 4 of the manuscript)
+  general construction: supp(f) = {1, t, 1+t}, t in F_{2^n} \ F_2
+  concrete case of the manuscript: n = 4, F_16 = F_2[xi],
+  xi^4 + xi + 1 = 0, t = xi, supp(f) = {1, xi, 1+xi}, f(0) = 0
+==================================================================
+
+[Example 4.2, n = 4] Defining polynomial of F_16: $.1^4 + $.1 + 1
+  supp(f) = {1, xi, 1+xi} : true ;  f(0) = 0 ;  wt(f) = 3 (odd)
+  E = {0, 1, xi, 1+xi} is 2-dimensional and S = E \ {0} : true
+
+  (a) Walsh spectrum of f (as listed in Example 4.2):
+        W_f = 10 : 1 time(s)
+        W_f = 2 : 12 time(s)
+        W_f = -6 : 3 time(s)
+      (multiplicities include b = 0 and sum to 16 = 2^4)
+      W_f(0) = 10, W_f(0) mod 4 = 2, all W_f(b) mod 8 = 2 : true
+      |E^perp| = 4, |E^perp \ {0}| = 3 (three choices)
+      W_f(b) = 4*|S cap H_b| - 6 holds for all b != 0 : true
+      #{b : W_f(b) = -6} = 3 ;  #{b : W_f(b) = 2} = 12
+
+  (b) C_f parameters [n, k, d] = [15, 5, 3]
+      weight enumerator of C_f: 1 + z^3 + 12*z^7 + 15*z^8 + 3*z^11
+      coefficients sum to 32 = |C_f|
+
+  (c) Hull(C_f) parameters [n, k, d] = [15, 4, 8]
+      Hull(C_f) = {u_{0,b} | b in F_16} : true
+      weight enumerator of Hull(C_f): 1 + 15*z^8
+      dim(Hull(C_f)) = 4 = n
+
+[Example 4.2, general part] supp(f) = {1, t, 1+t}, t in F_{2^n} \ F_2
+      n = 4 : [n, k] = [15, 5], dim(Hull(C_f)) = 4
+      n = 5 : [n, k] = [31, 6], dim(Hull(C_f)) = 5
+      n = 6 : [n, k] = [63, 7], dim(Hull(C_f)) = 6
+      n = 7 : [n, k] = [127, 8], dim(Hull(C_f)) = 7
+      n = 8 : [n, k] = [255, 9], dim(Hull(C_f)) = 8
+      n = 4, all 14 choices of t in F_16 \ F_2 checked
+      all give [15, 5] with dim(Hull(C_f)) = 4 : true
+
+End of Example 4.2.

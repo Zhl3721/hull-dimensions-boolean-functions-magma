@@ -1,0 +1,79 @@
+// =====================================================================
+// Program:      Example5.1_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Example 5.1 (label exa:2.4.1), Section 5 "Construction of
+//   binary linear codes with prescribed hull dimensions from a general
+//   construction", in Hull-917.tex.
+//
+// RELATED RESULTS USED
+//   Eq. (27) (eq:1.24.2), Lemma 11 (le:12.10.1), Lemma 12 (le:1.24.3),
+//   Theorem 1 (th:1.27.1), Theorem 3 (th:2.3.1).
+//
+// FIELD (as stated in the example)
+//   F_{2^6} with primitive element xi satisfying
+//   xi^6 + xi^4 + xi^3 + xi + 1 = 0.
+//
+// OBJECT
+//   f(x) = Tr_1^m(lambda1 x^{2^m+1}) Tr_1^m(lambda2 x^{2^m+1})
+//          + (x+w1)^{2^n-1} + (x+w2)^{2^n-1},  m=3, n=6,
+//   (lambda1,lambda2,w1,w2) = (1, xi^9, xi, xi^22),  B=(1,1,1,1).
+//
+// VERIFIED OUTPUT (reproduces Example 5.1)
+//   C_f: [63,7,20]; hull dimension 5; dual [63,56,3];
+//   weight enumerator 1+z^20+2z^24+4z^26+10z^28+14z^30+73z^32
+//   +8z^34+9z^36+6z^38.
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "reproduces all the
+//   examples in Sections 4-6".
+// =====================================================================
+clear;
+m := 3; n := 2*m;
+P<x> := PolynomialRing(GF(2));
+F<xi> := ext<GF(2) | x^6 + x^4 + x^3 + x + 1>;
+lambda1 := F!1;
+lambda2 := xi^9;
+w1 := xi;
+w2 := xi^22;
+
+function Trace_n(x)
+    t := GF(2)!0;
+    for i in [0..n-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+function Trace_m(x)
+    t := GF(2)!0;
+    for i in [0..m-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+
+S := [x : x in F | x ne 0];
+G := ZeroMatrix(GF(2), n+1, #S);
+B := Basis(F);
+for i in [1..n] do
+    for j in [1..#S] do G[i,j] := Trace_n(B[i]*S[j]); end for;
+end for;
+for j in [1..#S] do
+    x := S[j]; xp := x^(2^m+1);
+    g := (IntegerRing()!Trace_m(lambda1*xp) * IntegerRing()!Trace_m(lambda2*xp)) mod 2;
+    ind := 0;
+    if x eq w1 then ind := 1; end if;
+    if x eq w2 then ind := 1; end if;
+    G[n+1,j] := (g + ind) mod 2;
+end for;
+C := LinearCode(G);
+printf "Example 5.1 (exa:2.4.1)  C_f: [%o, %o, %o]\n", Length(C), Dimension(C), MinimumWeight(C);
+printf "  hull dimension = %o\n", Dimension(C meet Dual(C));
+printf "  dual: [%o, %o, %o]\n", Length(Dual(C)), Dimension(Dual(C)), MinimumWeight(Dual(C));
+wd := WeightDistribution(C);
+for item in Sort([<t[1], t[2]> : t in wd | t[2] ne 0]) do
+    printf "    weight %o : %o\n", item[1], item[2];
+end for;
+//quit;

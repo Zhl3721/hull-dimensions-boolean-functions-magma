@@ -1,0 +1,175 @@
+// =====================================================================
+// Program:      Example4.2_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Example 4.2 (label exa:4.4.3.2, Section 4), which exhibits functions
+//   f of odd weight attaining dim(Hull(C_f)) = n:
+//     supp(f) = {1, t, 1+t},  t in F_{2^n} \ F_2,  n > 3.
+//   For n = 4 the example takes F_16 = F_2[xi] with xi^4+xi+1 = 0 and
+//   t = xi, and states: W_f = 10 (1 time), 2 (12 times), -6 (3 times);
+//   C_f [15,5,3] with weight enumerator 1+z^3+12z^7+15z^8+3z^11;
+//   Hull(C_f) = {u_{0,b}} [15,4,8] with weight enumerator 1+15z^8.
+//
+// RELATED RESULTS USED
+//   Eq. (2) (eq:1.24.1) for C_f; Theorem 1 (th:1.27.1) (ii); Theorem 2
+//   (th:4.4.3.1); Remark 6 (rem:4.4.3.3).
+//
+// FIELD
+//   n = 4: F_16 = ext<GF(2) | x^4 + x + 1>, t = xi, as in the example;
+//   general part: Magma default GF(2^n) for 4 <= n <= 8.
+//
+// VERIFIED OUTPUT (reproduces Example 4.2)
+//   (1) n = 4, t = xi: W_f = 10 (1 time), 2 (12 times), -6 (3 times);
+//       every value = 2 (mod 8); W_f(0) = 10 = 2 (mod 4); C_f [15,5,3]
+//       with weight enumerator 1+z^3+12z^7+15z^8+3z^11; Hull(C_f)
+//       [15,4,8] with weight enumerator 1+15z^8; dim(Hull(C_f)) = 4 = n.
+//   (2) general part: for 4 <= n <= 8 the function with
+//       supp(f) = {1,t,1+t} gives dim(Hull(C_f)) = n, and for n = 4 all
+//       14 choices of t in F_16 \ F_2 give [15,5] with hull dimension 4.
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item on Theorem 2,
+//   Example 4.2 and Remark 6.
+// =====================================================================
+clear;
+
+printf "==================================================================\n";
+printf "Magma verification of Example 4.2 (Section 4 of the manuscript)\n";
+printf "  general construction: supp(f) = {1, t, 1+t}, t in F_{2^n} \\ F_2\n";
+printf "  concrete case of the manuscript: n = 4, F_16 = F_2[xi],\n";
+printf "  xi^4 + xi + 1 = 0, t = xi, supp(f) = {1, xi, 1+xi}, f(0) = 0\n";
+printf "==================================================================\n";
+
+// ---------------------------------------------------------------------
+// Part 1: the concrete case n = 4, t = xi, as stated in Example 4.2
+// ---------------------------------------------------------------------
+F<xi> := GF(2,4);
+printf "\n[Example 4.2, n = 4] Defining polynomial of F_16: %o\n", DefiningPolynomial(F);
+
+S := {F!1, xi, xi+1};
+f := func< y | (y in S) select F!1 else F!0 >;
+printf "  supp(f) = {1, xi, 1+xi} : %o ;  f(0) = %o ;  wt(f) = %o (odd)\n",
+       S eq {F!1, xi, xi+1}, f(F!0), #[x : x in F | f(x) eq F!1];
+
+// E = {0,1,xi,1+xi} is the 2-dimensional subspace spanned by 1 and xi
+E := {F!0, F!1, xi, xi+1};
+printf "  E = {0, 1, xi, 1+xi} is 2-dimensional and S = E \\ {0} : %o\n",
+       (#E eq 4) and (S eq {x : x in E | x ne F!0});
+
+// Walsh spectrum
+Walsh := [ &+[ ((f(y) + Trace(y*b)) eq F!0) select 1 else -1 : y in F ] : b in F ];
+W0 := &+[ ((f(y) + Trace(y*F!0)) eq F!0) select 1 else -1 : y in F ];
+allmod8 := true;
+for w in Walsh do
+    if ((w - 2) mod 8) ne 0 then allmod8 := false; end if;
+end for;
+
+printf "\n  (a) Walsh spectrum of f (as listed in Example 4.2):\n";
+for v in [10, 2, -6] do
+    printf "        W_f = %o : %o time(s)\n", v,
+           &+[ (w eq v) select 1 else 0 : w in Walsh ];
+end for;
+printf "      (multiplicities include b = 0 and sum to %o = 2^4)\n", #Walsh;
+printf "      W_f(0) = %o, W_f(0) mod 4 = %o, all W_f(b) mod 8 = 2 : %o\n",
+       W0, W0 mod 4, allmod8;
+
+// Finer description in the manuscript: for b != 0,
+// W_f(b) = 4*|S cap H_b| - 6; the three b in E^perp \ {0} give -6,
+// the remaining twelve b give 2.
+Eperp := [ b : b in F | (Trace(b) eq F!0) and (Trace(b*xi) eq F!0) ];
+printf "      |E^perp| = %o, |E^perp \\ {0}| = %o (three choices)\n", #Eperp, #Eperp - 1;
+cntm6 := 0; cnt2 := 0; formula := true;
+for b in F do
+    if b ne F!0 then
+        Hb := { x : x in F | Trace(b*x) eq F!1 };
+        k := #[ x : x in S | x in Hb ];
+        Wb := &+[ ((f(y) + Trace(y*b)) eq F!0) select 1 else -1 : y in F ];
+        if Wb ne 4*k - 6 then formula := false; end if;
+        if Wb eq -6 then cntm6 +:= 1;
+        elif Wb eq 2 then cnt2 +:= 1;
+        end if;
+    end if;
+end for;
+printf "      W_f(b) = 4*|S cap H_b| - 6 holds for all b != 0 : %o\n", formula;
+printf "      #{b : W_f(b) = -6} = %o ;  #{b : W_f(b) = 2} = %o\n", cntm6, cnt2;
+
+// The code C_f and its weight enumerator
+coord := [ y : y in F | y ne 0 ];
+rows := &cat[ [ a*f(y) + Trace(y*b) : y in coord ] : a in [F!0,F!1], b in F ];
+C := LinearCode(Matrix(GF(2), 2*#F, #coord, rows));
+printf "\n  (b) C_f parameters [n, k, d] = [%o, %o, %o]\n",
+       Length(C), Dimension(C), MinimumDistance(C);
+R<z> := PolynomialRing(Integers());
+WEC := Evaluate(WeightEnumerator(C), [R!1, z]);
+printf "      weight enumerator of C_f: 1";
+for i := 1 to Length(C) do
+    c := Coefficient(WEC, i);
+    if c ne 0 then
+        if c eq 1 then printf " + z^%o", i;
+        else printf " + %o*z^%o", c, i;
+        end if;
+    end if;
+end for;
+printf "\n      coefficients sum to %o = |C_f|\n",
+       &+[ t[2] : t in WeightDistribution(C) ];
+
+// Hull(C_f) = C_f meet C_f^perp
+H := C meet Dual(C);
+C0 := LinearCode(Matrix(GF(2), #F, #coord, &cat[ [ Trace(y*b) : y in coord ] : b in F ]));
+printf "\n  (c) Hull(C_f) parameters [n, k, d] = [%o, %o, %o]\n",
+       Length(H), Dimension(H), MinimumDistance(H);
+printf "      Hull(C_f) = {u_{0,b} | b in F_16} : %o\n", (H subset C0) and (C0 subset H);
+WEH := Evaluate(WeightEnumerator(H), [R!1, z]);
+printf "      weight enumerator of Hull(C_f): 1";
+for i := 1 to Length(H) do
+    c := Coefficient(WEH, i);
+    if c ne 0 then
+        if c eq 1 then printf " + z^%o", i;
+        else printf " + %o*z^%o", c, i;
+        end if;
+    end if;
+end for;
+printf "\n      dim(Hull(C_f)) = %o = n\n", Dimension(H);
+
+// ---------------------------------------------------------------------
+// Part 2: the general construction of Example 4.2, n = 4,...,8
+// ---------------------------------------------------------------------
+printf "\n[Example 4.2, general part] supp(f) = {1, t, 1+t}, t in F_{2^n} \\ F_2\n";
+for n := 4 to 8 do
+    Fn<t> := GF(2,n);
+    Sn := {Fn!1, t, t+1};
+    fn := func< y | (y in Sn) select Fn!1 else Fn!0 >;
+    coordn := [ y : y in Fn | y ne 0 ];
+    rowsn := &cat[ [ a*fn(y) + Trace(y*b) : y in coordn ] : a in [Fn!0,Fn!1], b in Fn ];
+    Cn := LinearCode(Matrix(GF(2), 2*#Fn, #coordn, rowsn));
+    Hn := Cn meet Dual(Cn);
+    printf "      n = %o : [n, k] = [%o, %o], dim(Hull(C_f)) = %o\n",
+           n, Length(Cn), Dimension(Cn), Dimension(Hn);
+end for;
+
+// n = 4: the manuscript allows any t in F_16 \ F_2
+allt := true; ntested := 0;
+for t in F do
+    if t notin {F!0, F!1} then
+        St := {F!1, t, t+1};
+        ft := func< y | (y in St) select F!1 else F!0 >;
+        rowst := &cat[ [ a*ft(y) + Trace(y*b) : y in coord ] : a in [F!0,F!1], b in F ];
+        Ct := LinearCode(Matrix(GF(2), 2*#F, #coord, rowst));
+        Ht := Ct meet Dual(Ct);
+        ntested +:= 1;
+        if (Length(Ct) ne 15) or (Dimension(Ct) ne 5) or (Dimension(Ht) ne 4) then
+            allt := false;
+        end if;
+    end if;
+end for;
+printf "      n = 4, all %o choices of t in F_16 \\ F_2 checked\n", ntested;
+printf "      all give [15, 5] with dim(Hull(C_f)) = 4 : %o\n", allt;
+
+printf "\nEnd of Example 4.2.\n";
+//quit;

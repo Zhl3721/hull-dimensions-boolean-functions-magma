@@ -1,0 +1,113 @@
+// =====================================================================
+// Program:      Example5.5_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Example 5.5 (unlabeled in the source; Section 5, Hull-917.tex).
+//   For the quadruple of Example 5.1 (m=3, n=6,
+//   (lambda_1,lambda_2,w_1,w_2)=(1,xi^9,xi,xi^22), w_3=xi^43) it
+//   verifies Corollary 2 (co:3.12.001):
+//     Hull(C_f) = { u_{0,b} in C_f : b in H },
+//     H = { b in F_{2^6} : Tr_1^6(b w_3) = 0 },
+//   and states: |H| = 32, H has basis xi^2, xi^6, xi^8, xi^11, xi^13,
+//   and lists the 32 elements of H by increasing exponents.
+//
+// RELATED RESULTS USED
+//   Eq. (27) (eq:1.24.2), Corollary 2 (co:3.12.001), Theorem 4
+//   (th:2.4.1), Lemma 12 (le:1.24.3).
+//
+// FIELD
+//   F_{2^6} with primitive element xi satisfying
+//   xi^6 + xi^4 + xi^3 + xi + 1 = 0 (as in Example 5.1).
+//
+// VERIFIED OUTPUT
+//   |H| = 32; rank of {xi^2,xi^6,xi^8,xi^11,xi^13} = 5 with all five
+//   elements in H; the sorted list of exponents of H\{0} coincides
+//   with the list displayed in Example 5.5; the subcode spanned by
+//   {u_{0,b} : b in H} has parameters [63,5,32] and is contained in
+//   C_f cap C_f^perp, hence equals Hull(C_f).
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item "reproduces the
+//   numerical data of the examples in Sections 4-6".
+// =====================================================================
+clear;
+Z := IntegerRing();
+m := 3; n := 6;
+P<x> := PolynomialRing(GF(2));
+F<xi> := ext<GF(2) | x^6 + x^4 + x^3 + x + 1>;
+lambda1 := F!1; lambda2 := xi^9; w1 := xi; w2 := xi^22; w3 := w1 + w2;
+
+function Trace_n(x)
+    t := GF(2)!0;
+    for i in [0..n-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+function Trace_m(x)
+    t := GF(2)!0;
+    for i in [0..m-1] do t +:= x^(2^i); end for;
+    return t;
+end function;
+
+N := 2^n-1;
+S := [x : x in F | x ne 0];
+B := Basis(F);
+G := ZeroMatrix(GF(2), n+1, N);
+for i in [1..n] do
+    for j in [1..N] do G[i,j] := Trace_n(B[i]*S[j]); end for;
+end for;
+for j in [1..N] do
+    x := S[j]; xp := x^(2^m+1);
+    g := (IntegerRing()!Trace_m(lambda1*xp) * IntegerRing()!Trace_m(lambda2*xp)) mod 2;
+    ind := 0;
+    if x eq w1 then ind := 1; end if;
+    if x eq w2 then ind := 1; end if;
+    G[n+1,j] := (g + ind) mod 2;
+end for;
+C := LinearCode(G);
+Hull := C meet Dual(C);
+
+// H and the basis listed in Example 5.5
+H := [b : b in F | Z!Trace(b*w3) eq 0];
+basis_list := [xi^2, xi^6, xi^8, xi^11, xi^13];
+function RankOf(listb)
+    Bs := Basis(F);
+    rows := [ [Z!Trace(Bs[j]*b) : j in [1..n]] : b in listb ];
+    return Rank(Matrix(GF(2), #listb, n, &cat(rows)));
+end function;
+
+printf "Example 5.5 (Corollary 2), m=3, tuple of Example 5.1\n";
+printf "  |H| = %o (expected 2^(n-1) = %o): %o\n",
+       #H, 2^(n-1), #H eq 2^(n-1);
+printf "  rank of {xi^2,xi^6,xi^8,xi^11,xi^13} = %o\n", RankOf(basis_list);
+printf "  all listed elements lie in H: %o\n",
+       &and[Z!Trace(b*w3) eq 0 : b in basis_list];
+exps := Sort([Log(b) : b in H | b ne 0]);
+paper_exps := [2,6,8,11,13,14,17,20,21,22,24,25,27,28,29,30,
+               34,35,36,37,38,40,47,48,50,52,54,55,56,59,60];
+printf "  exponent list matches Example 5.5: %o\n", exps eq paper_exps;
+
+// Hull(C_f) = span{ u_{0,b} : b in H }
+rows := [ [Z!Trace(b*x) : x in S] : b in basis_list ];
+Hcode := LinearCode(Matrix(GF(2), #rows, N, &cat(rows)));
+inside := true;
+for b in basis_list do
+    row := [Z!Trace(b*x) : x in S];
+    for i in [1..n+1] do
+        dot := (&+[ row[j]*(Z!G[i,j]) : j in [1..N] ]) mod 2;
+        if dot ne 0 then inside := false; break; end if;
+    end for;
+end for;
+printf "  span{u_{0,b}: b in H} contained in C_f cap C_f^perp: %o\n", inside;
+printf "  Hull(C_f): [%o, %o, %o]\n",
+       Length(Hull), Dimension(Hull), MinimumWeight(Hull);
+printf "  span{u_{0,b}: b in H}: [%o, %o, %o]\n",
+       Length(Hcode), Dimension(Hcode), MinimumWeight(Hcode);
+printf "  equality (same dimension and inclusion): %o\n",
+       (Dimension(Hcode) eq Dimension(Hull)) and inside;
+//quit;

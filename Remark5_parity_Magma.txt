@@ -1,0 +1,84 @@
+// =====================================================================
+// Program:      Remark5_parity_Magma.txt
+//
+// USAGE
+//   Magma GUI  : load/paste this file as is; the session stays open
+//                (the final quit; is commented out).
+//   Command line: magma -b <thisfile> ; if Magma waits at the end,
+//                add a final "quit;" line (see note above).
+//
+// PAPER SOURCE
+//   Remark 5 (end of Section 4), which reports that in the two searched
+//   families all functions have even weight, so that (by Theorem 2) none
+//   of the corresponding codes has hull dimension n:
+//     f = Tr_1^n(x^d)           with 3 <= n <= 12, 2 <= d <= 2^n-2,
+//     f = Tr_1^n(x^{d1} + x^{d2}) with 4 <= n <=  8, 2 <= d1 < d2 <= 2^n-2.
+//   The parity statement in Remark 5 is
+//     wt(f) = sum_x f(x) = sum_i Tr_1^n(sum_x x^{d_i}) = 0 (mod 2),
+//   since sum_x x^e = 0 whenever (2^n-1) does not divide e.
+//
+// RELATED RESULTS USED
+//   Lemma 4 (01.26.1); Theorem 2 (th:4.4.3.1).
+//
+// FIELD
+//   Magma default GF(2^n); no primitive polynomial is prescribed for
+//   this search.
+//
+// VERIFIED OUTPUT
+//   For every exponent d and every pair (d1,d2) in the stated ranges the
+//   weight of f is even; for each n the program prints the number of
+//   cases with odd weight (0 everywhere).
+//
+// RESPONSE LETTER
+//   Response 13 (supplementary Magma package), item on the parity of
+//   wt(f) in the searched families of Remark 5.
+// =====================================================================
+clear;
+
+printf "==================================================================\n";
+printf "Remark 5 (Section 4): parity of wt(f) for the searched families\n";
+printf "  (i)  f(x) = Tr_1^n(x^d),           3 <= n <= 12, 2 <= d <= 2^n-2\n";
+printf "  (ii) f(x) = Tr_1^n(x^{d1}+x^{d2}), 4 <= n <= 8, 2 <= d1 < d2 <= 2^n-2\n";
+printf "==================================================================\n";
+
+// (i) single monomials
+printf "\n(i) f(x) = Tr_1^n(x^d)\n";
+for n := 3 to 12 do
+    F<w> := GF(2,n);
+    N := 2^n - 1;
+    pw := [F!1];
+    for j := 1 to N-1 do Append(~pw, pw[j]*w); end for;
+    trpw := [Integers()!Trace(pw[j]) : j in [1..N]];
+    odd := 0;
+    for d := 2 to N-1 do
+        wt := &+[ trpw[((j-1)*d mod N)+1] : j in [1..N] ];
+        if wt mod 2 ne 0 then odd +:= 1; end if;
+    end for;
+    printf "    n = %2o : %5o exponents checked, %o odd weight(s)\n", n, N-2, odd;
+end for;
+
+// (ii) sums of two monomials
+printf "\n(ii) f(x) = Tr_1^n(x^{d1}+x^{d2})\n";
+for n := 4 to 8 do
+    F<w> := GF(2,n);
+    N := 2^n - 1;
+    pw := [F!1];
+    for j := 1 to N-1 do Append(~pw, pw[j]*w); end for;
+    trpw := [Integers()!Trace(pw[j]) : j in [1..N]];
+    idx := [ [ ((j-1)*d mod N)+1 : j in [1..N] ] : d in [2..N-1] ];
+    odd := 0; cnt := 0;
+    for d1 := 2 to N-2 do
+        I1 := idx[d1-1];
+        for d2 := d1+1 to N-1 do
+            I2 := idx[d2-1];
+            wt := &+[ (trpw[I1[j]] + trpw[I2[j]]) mod 2 : j in [1..N] ];
+            cnt +:= 1;
+            if wt mod 2 ne 0 then odd +:= 1; end if;
+        end for;
+    end for;
+    printf "    n = %2o : %5o pairs checked, %o odd weight(s)\n", n, cnt, odd;
+end for;
+
+printf "\nAll functions in both searched families have even weight.\n";
+printf "End of Remark 5 verification.\n";
+//quit;
